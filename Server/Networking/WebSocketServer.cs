@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
+using NeuroCity.Server.Player;
 
 namespace NeuroCity.Server.Networking;
 
@@ -9,6 +11,7 @@ public class WebSocketServer
     private readonly GameEngine _engine;
     private HttpListener? _httpListener;
     private readonly List<WebSocket> _connectedClients = new();
+    private readonly Dictionary<WebSocket, string> _clientPlayerIds = new();
     private readonly object _clientsLock = new();
     private bool _isRunning;
 
@@ -42,6 +45,7 @@ public class WebSocketServer
                 client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutting down", CancellationToken.None).Wait();
             }
             _connectedClients.Clear();
+            _clientPlayerIds.Clear();
         }
         
         _httpListener?.Stop();
@@ -91,6 +95,12 @@ public class WebSocketServer
     {
         var buffer = new byte[4096];
         var connectionId = Guid.NewGuid().ToString();
+        var playerId = _engine.PlayerSystem.LocalPlayer?.Id ?? connectionId;
+
+        lock (_clientsLock)
+        {
+            _clientPlayerIds[webSocket] = playerId;
+        }
 
         try
         {
@@ -104,6 +114,12 @@ public class WebSocketServer
                 {
                     break;
                 }
+                
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    ProcessClientMessage(playerId, message);
+                }
             }
         }
         catch (Exception ex)
@@ -115,6 +131,7 @@ public class WebSocketServer
             lock (_clientsLock)
             {
                 _connectedClients.Remove(webSocket);
+                _clientPlayerIds.Remove(webSocket);
             }
             
             Console.WriteLine($"[WebSocketServer] Client disconnected. Total: {_connectedClients.Count}");
@@ -123,6 +140,33 @@ public class WebSocketServer
             {
                 await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed", CancellationToken.None);
             }
+        }
+    }
+
+    private void ProcessClientMessage(string playerId, string message)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(message);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("type", out var typeElement))
+            {
+                var type = typeElement.GetString();
+                
+                if (type == "input" && root.TryGetProperty("data", out var dataElement))
+                {
+                    var input = JsonSerializer.Deserialize<PlayerInput>(dataElement.GetRawText());
+                    if (input != null)
+                    {
+                        _engine.PlayerSystem.ProcessInput(playerId, input);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WebSocketServer] Message parse error: {ex.Message}");
         }
     }
 
@@ -165,6 +209,7 @@ public class WebSocketServer
                 foreach (var client in deadClients)
                 {
                     _connectedClients.Remove(client);
+                    _clientPlayerIds.Remove(client);
                 }
             }
         }
