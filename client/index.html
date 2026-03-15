@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NeuroCity Engine</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        overflow: hidden;
+        background: #0a0a0f;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+      
+      #app {
+        width: 100vw;
+        height: 100vh;
+      }
+      
+      #info {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: #7fdbca;
+        background: rgba(10, 10, 15, 0.85);
+        padding: 16px 24px;
+        border-radius: 8px;
+        border: 1px solid rgba(127, 219, 202, 0.3);
+        backdrop-filter: blur(10px);
+        z-index: 100;
+      }
+      
+      #info h1 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+      }
+      
+      #info p {
+        font-size: 0.85rem;
+        color: #a0a8b0;
+      }
+      
+      #status {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ff6b6b;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+      }
+      
+      #status.connected {
+        background: #4ade80;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      
+      #stats {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: #6b7280;
+        font-size: 0.75rem;
+        z-index: 100;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="info">
+      <h1>NeuroCity Engine</h1>
+      <p><span id="status"></span>Connecting to server...</p>
+    </div>
+    <div id="stats">
+      Tick: <span id="tick">0</span> | Buildings: <span id="building-count">0</span> | Cars: <span id="car-count">0</span>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
