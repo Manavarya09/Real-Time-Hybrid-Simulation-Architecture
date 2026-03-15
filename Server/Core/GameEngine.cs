@@ -8,6 +8,7 @@ using NeuroCity.Server.Player;
 using NeuroCity.Server.Environment;
 using NeuroCity.Server.Economy;
 using NeuroCity.Server.Physics;
+using NeuroCity.Server.AI;
 
 namespace NeuroCity.Server.Core;
 
@@ -24,9 +25,10 @@ public class GameEngine
     private readonly EconomySystem _economySystem;
     private readonly PhysicsWorld _physicsWorld;
     private readonly SaveLoadSystem _saveLoadSystem;
+    private readonly ServerConsole _console;
 
     private const float TickRate = 20f;
-    private const float DeltaTime = 1f / TickRate;
+    public const float DeltaTime = 1f / TickRate;
 
     public WorldState WorldState => _worldState;
     public SimulationLoop SimulationLoop => _simulationLoop;
@@ -50,20 +52,21 @@ public class GameEngine
         _economySystem = new EconomySystem();
         _physicsWorld = new PhysicsWorld();
         _saveLoadSystem = new SaveLoadSystem();
+        _console = new ServerConsole(this);
     }
 
     public async Task InitializeAsync()
     {
         Console.WriteLine("╔═══════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║           NeuroCity Engine v2.0 - Starting...            ║");
+        Console.WriteLine("║         NeuroCity Engine v2.0 - Production Ready          ║");
         Console.WriteLine("╚═══════════════════════════════════════════════════════════╝");
         
         _cityGenerator.GenerateCity(_worldState, 20, 20);
-        Console.WriteLine($"[GameEngine] Generated {_worldState.Buildings.Count} buildings");
+        Console.WriteLine($"[Engine] Generated {_worldState.Buildings.Count} buildings");
         
         var spacing = 15f;
         _roadGraph.GenerateGridRoadNetwork(20f, 20, 20, spacing);
-        Console.WriteLine($"[GameEngine] Generated {_roadGraph.Nodes.Count} road nodes");
+        Console.WriteLine($"[Engine] Generated {_roadGraph.Nodes.Count} road nodes");
         
         _worldState.Roads = _roadGraph;
         
@@ -81,9 +84,24 @@ public class GameEngine
         
         _simulationLoop.Start();
         
-        Console.WriteLine("╔═══════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║           NeuroCity Engine v2.0 - Ready!                  ║");
-        Console.WriteLine("╚═══════════════════════════════════════════════════════════╝");
+        _console.Start();
+        
+        PrintBanner();
+    }
+
+    private void PrintBanner()
+    {
+        Console.WriteLine(@"
+   ██████╗ ███████╗███████╗██╗      ██████╗ ██╗    ██╗
+   ██╔══██╗██╔════╝██╔════╝██║     ██╔═══██╗██║    ██║
+   ██║  ██║█████╗  █████╗  ██║     ██║   ██║██║ █╗ ██║
+   ██║  ██║██╔══╝  ██╔══╝  ██║     ██║   ██║██║███╗██║
+   ██████╔╝███████╗███████╗███████╗╚██████╔╝╚███╔███╔╝
+   ╚═════╝ ╚══════╝╚══════╝╚══════╝ ╚═════╝  ╚══╝╚══╝
+                                                   
+   [ Production-Ready Hybrid Simulation Engine ]
+   [ Type 'help' for available commands ]
+");
     }
 
     public void Update(long tick)
@@ -146,20 +164,22 @@ public class GameEngine
         _worldState.Buildings = saveData.Buildings;
         _worldState.Roads = saveData.Roads;
         _worldState.Environment = saveData.Environment;
+        _worldState.Resources = saveData.Resources;
         
-        Console.WriteLine($"[GameEngine] Loaded save: {saveData.WorldName}");
+        Console.WriteLine($"[Engine] Loaded save: {saveData.WorldName}");
     }
 
     public async Task ShutdownAsync()
     {
-        Console.WriteLine("[GameEngine] Shutting down...");
+        Console.WriteLine("[Engine] Shutting down...");
         _simulationLoop.Stop();
         _trafficSystem.Shutdown();
         _playerSystem.Shutdown();
         _environmentSystem.Shutdown();
         _economySystem.Shutdown();
         _physicsWorld.Shutdown();
+        await _console.StopAsync();
         await _webSocketServer.StopAsync();
-        Console.WriteLine("[GameEngine] Shutdown complete");
+        Console.WriteLine("[Engine] Shutdown complete");
     }
 }
